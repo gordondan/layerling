@@ -1,0 +1,40 @@
+# origmagic's always-on layerling: built from this checkout, on http://127.0.0.1:3100
+# (the same address as before, so designs kept in the browser stay visible).
+# Starts with Docker and comes back after a crash or reboot.
+#   Update after pulling: docker compose -f docker/compose.local.yml up -d --build
+#   Stop:                 docker compose -f docker/compose.local.yml down
+# LAYERLING_MCP_TOKEN comes from docker/.env (git-ignored); the MCP client needs the same one.
+name: layerling
+services:
+  layerling:
+    image: layerling-local:latest
+    container_name: layerling
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3100:3000"
+    environment:
+      PORT: "3000"
+      HOSTNAME: "0.0.0.0"
+      NEXT_TELEMETRY_DISABLED: "1"
+      LAYERLING_MCP_REMOTE: "true"
+      LAYERLING_MCP_TOKEN: "${LAYERLING_MCP_TOKEN:?set it in docker/.env}"
+    volumes:
+      - layerling-thumbnails:/app/.codex/project-thumbnails
+    # "default" keeps the 127.0.0.1:3100 port; "cloudflare-tunnel" lets the cloudflared container
+    # (~/source/repos/cloudflare-tunnel) reach this one as http://layerling:3000 (layerling.dagordons.com).
+    networks:
+      default:
+      cloudflare-tunnel:
+        aliases:
+          - layerling
+
+volumes:
+  layerling-thumbnails:
+
+networks:
+  cloudflare-tunnel:
+    external: true
+    name: cloudflare-tunnel
