@@ -20,6 +20,7 @@ services:
       HOSTNAME: "0.0.0.0"
       NEXT_TELEMETRY_DISABLED: "1"
       LAYERLING_MCP_REMOTE: "true"
+      LAYERLING_MCP_ALLOWED_HOSTS: "layerling.dagordons.com"
       LAYERLING_MCP_TOKEN: "${LAYERLING_MCP_TOKEN:?set it in docker/.env}"
     volumes:
       - layerling-thumbnails:/app/.codex/project-thumbnails
