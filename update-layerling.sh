@@ -1,5 +1,5 @@
 #!/bin/bash
-# Updates the always-on layerling on origmagic (docker/compose.local.yml, http://127.0.0.1:3100)
+# Updates the always-on layerling on dan-depot (docker/compose.local.yml, http://127.0.0.1:3100)
 # to the newest release tag, rebuilds the image and restarts the container.
 # The checkout's "origin" is the fork (gordondan/layerling, which holds this script and the compose
 # file); "upstream" is henmedia/layerling. The fork's main is pulled first, then the upstream release

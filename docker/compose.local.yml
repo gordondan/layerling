@@ -1,4 +1,4 @@
-# origmagic's always-on layerling: built from this checkout, on http://127.0.0.1:3100
+# dan-depot's always-on layerling: built from this checkout, on http://127.0.0.1:3100
 # (the same address as before, so designs kept in the browser stay visible).
 # Starts with Docker and comes back after a crash or reboot.
 #   Update after pulling: docker compose -f docker/compose.local.yml up -d --build
