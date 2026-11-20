@@ -12,6 +12,14 @@ const baseUrl = process.env.LAYERLING_URL || DEFAULT_BASE_URL;
 // A copy on a NAS or home server that switched remote use on (LAYERLING_MCP_REMOTE and
 // LAYERLING_MCP_TOKEN there) wants the same token from this client.
 const accessToken = (process.env.LAYERLING_MCP_TOKEN || "").trim();
+// A copy behind Cloudflare Access also wants a service token. Read from the environment only;
+// never hard-code the values here.
+const cfAccessClientId = (process.env.CF_ACCESS_CLIENT_ID || "").trim();
+const cfAccessClientSecret = (process.env.CF_ACCESS_CLIENT_SECRET || "").trim();
+const cfAccessHeaders =
+  cfAccessClientId && cfAccessClientSecret
+    ? { "CF-Access-Client-Id": cfAccessClientId, "CF-Access-Client-Secret": cfAccessClientSecret }
+    : {};
 // With no editor open, a tool that needs one starts the browser itself - on this computer only.
 // LAYERLING_MCP_OPEN_EDITOR=0 leaves that to the user.
 const openEditorAutomatically = process.env.LAYERLING_MCP_OPEN_EDITOR !== "0" && isLocalBridgeUrl(baseUrl);
@@ -26,7 +34,11 @@ function bridgeUrl() {
  */
 async function bridgeFetch(options, timeoutMs) {
   try {
-    const headers = { ...(options.headers || {}), ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) };
+    const headers = {
+      ...(options.headers || {}),
+      ...cfAccessHeaders,
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+    };
     return await fetch(bridgeUrl(), { ...options, headers, signal: AbortSignal.timeout(timeoutMs) });
   } catch (error) {
     if (error?.name === "TimeoutError") {
