@@ -1,0 +1,19 @@
+# dan-depot overrides (untracked; applied by ../update-layerling-dan-depot.sh).
+# - Port 3100 on the LAN: the Mac's Layerling MCP server connects here with its token.
+# - cloudflare-tunnel network: cloudflared serves https://layerling.dagordons.com
+#   (behind Cloudflare Access) from http://layerling:3000.
+# - LAYERLING_MCP_ALLOWED_HOSTS: lets editor tabs opened on that public host name reach the MCP bridge.
+# Use: docker compose -f compose.local.yml -f compose.dan-depot.yml up -d
+services:
+  layerling:
+    ports: !override
+      - "3100:3000"
+    environment:
+      LAYERLING_MCP_ALLOWED_HOSTS: "layerling.dagordons.com"
+    networks:
+      - default
+      - cloudflare-tunnel
+
+networks:
+  cloudflare-tunnel:
+    external: true
