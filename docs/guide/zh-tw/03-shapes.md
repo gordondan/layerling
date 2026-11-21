@@ -23,7 +23,7 @@ layerling 的每個零件都從一個形狀開始。其餘一切都是由形狀�
 
 - **{{ui:library.section.basic}}：** {{ui:shape.box}}、{{ui:shape.roundedBox}}、{{ui:shape.cylinder}}、{{ui:shape.slot}}、{{ui:shape.ellipse}}、{{ui:shape.polygon}}（三到二十四邊）、{{ui:shape.wedge}}、{{ui:shape.sphere}}、{{ui:shape.cone}}、{{ui:shape.curvedCone}}（側面向內彎成像偽球面那樣的喇叭形，或向外鼓成圓頂；由 {{ui:prop.curvedConeTop}} 與 {{ui:prop.curvedConeBend}} 設定，並且像所有精確實體一樣可以薄殼與導圓角）、{{ui:shape.pyramid}}（三到二十四邊，因此也有三角錐）、{{ui:shape.roundRoof}}、{{ui:shape.halfSphere}}、{{ui:shape.paraboloid}}（收窄成圓頭的穹頂，高度隨離軸距離的平方下降）和 {{ui:shape.torus}}。
 - **{{ui:library.section.vessels}}：** 從一個輪廓過渡到另一個輪廓的 {{ui:shape.loft}}，例如從方形到圓形，{{ui:shape.tube}}，由最多十二段直管與其間的彎角組成的 {{ui:shape.bentTube}}，以及 {{ui:shape.vase}}。
-- **{{ui:library.section.holes}}：** 用於螺絲頭的 {{ui:shape.counterbore}} 與 {{ui:shape.countersink}}、用於水平孔的 {{ui:shape.teardrop}}，以及用於 USB、HDMI、DisplayPort 與 RJ45 插座的 {{ui:shape.port}}。
+- **{{ui:library.section.holes}}：** 用於螺絲頭的 {{ui:shape.counterbore}} 與 {{ui:shape.countersink}}、用於水平孔的 {{ui:shape.teardrop}}，以及用於 USB、HDMI、DisplayPort 與 RJ45 插座的 {{ui:shape.port}}。 {{ui:threadInsert.title}} 在你選取的實體上開出熱熔嵌件的孔；它不能拖入設計。
 - **{{ui:library.section.connections}}：** {{ui:shape.thread}}（螺桿、螺絲、螺帽與螺紋孔）、沉頭螺絲下的 {{ui:shape.finishingWasher}}、可一體列印的 {{ui:shape.hinge}} 與 {{ui:shape.dovetail}}。更多內容見[螺紋與機械件](chapter:threads-and-mechanics)。
 - **{{ui:library.section.enclosure}}：** 用於熱熔螺母與自攻螺絲的 {{ui:shape.screwBoss}}、附卡座的 {{ui:shape.snapFit}}，以及 {{ui:shape.rib}} 或角撐板。更多內容見[螺紋與機械件](chapter:threads-and-mechanics)。
 - **{{ui:library.section.mechanics}}：** {{ui:shape.spring}}、{{ui:shape.gear}}、{{ui:shape.hirth}} 與 {{ui:shape.pulley}}。
@@ -35,6 +35,10 @@ layerling 的每個零件都從一個形狀開始。其餘一切都是由形狀�
 要得到三角形有兩種方式：三邊的 {{ui:shape.polygon}} 是等腰三角形，也就是 Tinkercad 的「Roof」；{{ui:shape.wedge}} 則是直角三角形。兩者都是真正的三角柱。想挖出三角形孔，可複製該形狀、把副本縮小、標記為孔，再用 {{ui:editor.tool.centerOnWorkplane}} 或 {{ui:editor.tool.align}} 對齊。兩者都按形狀的邊界框運作，也就是包住它的最小方框，所以切掉一半的正方形仍算作完整正方形。命令搜尋（[[Ctrl]]+[[K]]）在「triangle」或「roof」下也找得到這兩種形狀。楔形的屬性裡還有{{ui:prop.wedgeAngle}}，即其斜面與平台的夾角。輸入一個角度，高度會在寬度不變的情況下隨之改變，便於把面上的工作平面設成一定的傾角。
 
 {{ui:shape.slot}} 可以一端比另一端窄，例如用在兩顆皮帶輪之間的皮帶護罩。在 {{ui:inspector.properties}} 下設定 {{ui:prop.slotSmallEnd}}；大端與膠囊同寬，兩側從一段圓弧直通到另一段圓弧。{{ui:prop.slotCentreDistance}} 是兩段圓弧圓心之間的距離，也就是兩顆皮帶輪的間距。改變小端時圓心距保持不變，膠囊會變長或變短。錐形膠囊同樣是精確實體，可套用圓角並匯出 STEP。
+
+{{ui:shape.sector}} 是一個圓盤，你可以用 {{ui:prop.sectorAngle}}（1 到 360°）像時鐘指針一樣把它切掉一部分，從十二點鐘方向起順時針計算。{{ui:prop.innerDiameter}} 可以把它變成圓環或圓環段（為 0 時零件保持實心），{{ui:prop.sectorEndRadius}} 則把兩端倒成半圓：得到一條彎曲的槽，例如用於螢幕支架和其他需要轉動並夾緊的零件。直徑和高度的設定方法與圓柱相同。外框仍是完整的圓，所以形狀繞圓心旋轉。
+
+{{ui:shape.polygon}} 在 {{ui:prop.sides}} 下方有 {{ui:prop.cornerFillet}} 滑桿，模型上還有一個拖曳點，與 {{ui:shape.roundedBox}} 一樣。無論有多少條邊，一個半徑適用於所有角。它以毫米為單位，所以拉伸後的多邊形仍保持圓角；最大值是相鄰圓角恰好相接的位置，0 則是普通多邊形。
 
 ## 形狀的設定
 

@@ -101,6 +101,7 @@ AI 使用的是與你相同的功能，走的也是你在編輯器中操作時�
 | `layerling_lay_flat` | 讓物件以某個面平放在平台上 |
 | `layerling_place_on_face` | 把物件放到另一個物件的面上，斜面也可以，就像 C 鍵 |
 | `layerling_perforate_face` | 在平面上或繞圓柱、圓管、孔的側壁切出孔陣列；孔仍會以孔的形式與實體群組在一起 |
+| `layerling_thread_insert` | 在平面上或圓柱、圓管的外側壁上做出熱熔螺紋嵌件的孔（M2 至 M8、1/4-20 或自訂尺寸），事先檢查孔旁的壁厚與孔後的深度是否足夠；孔仍會以孔的形式與實體群組在一起 |
 | `layerling_sweep_sketch` | 沿著由點構成的路徑，把矩形或圓形斷面掃掠成一個精確實體；封閉路徑會形成圓環 |
 | `layerling_push_face` | 把平面推出，或在其中挖出凹槽，可設定距邊緣的內縮與轉角半徑；新零件是與實體群組在一起的草圖實體 |
 | `layerling_paint` | 為多色列印給實體的部分表面上自己的顏色（上色）：把面填色到銳利邊緣、圓斑，或在平面檢視中畫的套索；橡皮擦、全部清除；隨實體儲存，並在 3MF 中寫成已上色的面 |
@@ -119,6 +120,7 @@ AI 使用的是與你相同的功能，走的也是你在編輯器中操作時�
 | `layerling_cookie_cutter` | makes a cookie cutter from the objects: a wall and a rim round the outline (Cookie cutter) |
 | `layerling_flexi_joints` | cuts a flat body into links with joints printed in place that swing to the sides (Flexi joints) |
 | `layerling_make_lid` | makes a lid for a body open at the top: pushed in, over the top or flat, with the fit you choose and magnets if you like (Lid) |
+| `layerling_make_mold` | makes a mold or a die from a master: a two-part mold to cast in, a silicone pour box, an open mold, or a stamp and die for sheet (Mold & die) |
 | `layerling_make_cable_channel` | runs a round channel for a cable through a body from an entry to an exit, finding the way itself with gentle bends (Cable channel) |
 | `layerling_loft_sketches` | joins two sketch bodies into a loft from one outline to the other (Loft sketches) |
 | `layerling_separate_parts` | 把形狀分離成各自的鬆散部件；草圖實體則依輪廓拆成每個輪廓一個實體 |
@@ -145,6 +147,8 @@ AI 使用的是與你相同的功能，走的也是你在編輯器中操作時�
 | `layerling_check_clearance` | 列印前檢查哪些零件重疊、接觸或間距小於最小間隙，也檢查同一物件中彼此分離的零件 |
 | `layerling_printer_play` | 讀取、設定或清除印表機間隙（設定中的{{ui:workspace.printerPlay}}），並放置用來測量它的配合測試件 |
 | `layerling_check_print` | 列印前檢查會出什麼問題：對噴嘴來說過薄的壁、懸空的零件、與平台接觸過少、懸垂和開放網格 |
+| `layerling_check_layers` | 把列印件切成層，逐層列出會出問題的地方：懸垂、無支撐區域、橋接、薄壁、小島、陷入熱床的零件（列印分析） |
+| `layerling_split_bolt` | 沿軸線把螺絲或螺桿縱向剖成兩半，並以剖切面朝下平放以便列印，可選加定位銷 |
 | `layerling_add_reference_points` | 標記參考點——可落在物件的中心、角落或邊中點，也可指定精確位置——形狀會吸附到這些點 |
 | `layerling_list_reference_points` | 列出參考點及其 id 與位置 |
 | `layerling_remove_reference_points` | 依 id 刪除參考點，或全部刪除 |

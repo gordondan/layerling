@@ -1,4 +1,5 @@
 "use client";
+import { polygonCornerDragPatch } from "@/lib/roundedPolygonGeometry";
 import { holdsShapeLock } from "@/lib/shapeLock";
 import type { TextBlockOptions } from "@/lib/textBlock";
 import type { SurfaceTextureFace, SurfaceTextureRegion, SurfaceTextureSettings } from "@/lib/surfaceTexture";
@@ -6,7 +7,7 @@ import { markEscapeHandled } from "@/lib/escapeHandled";
 import { ArrowDownToLine, Check, ChevronLeft, Crosshair, Cuboid, Download, Eye, EyeOff, FlipHorizontal, GripVertical, Home, Layers, Minus, Move, MousePointer2, PanelsTopLeft, Pointer, ScanEye, PencilLine, PictureInPicture2, Plus, Rotate3d, RotateCcw, RotateCw, Ruler, RulerDimensionLine, Scaling, Slice, Spline, Trash2, X } from "lucide-react";
 import { loadTouchHandleMode, nextTouchHandleMode, saveTouchHandleMode, touchModeMovesBody, type TouchHandleMode } from "@/lib/touchHandleMode";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type Dispatch, type DragEvent, type MutableRefObject, type PointerEvent as ReactPointerEvent, type ReactNode, type SetStateAction, type WheelEvent as ReactWheelEvent } from "react";
-import { boxEdgeTargets, edgeSnapGuide, objectSnapOffset, shiftSnapBox, snapResizeEdge, type EdgeSnapTarget, type ObjectSnapGuide, type SnapBox } from "@/lib/objectSnap";
+import { boxEdgeTargets, edgeSnapGuide, objectSnapOffset, shiftSnapBox, snapResizeEdge, wallLines, type EdgeSnapTarget, type MoveWallSnap, type ObjectSnapGuide, type SnapBox } from "@/lib/objectSnap";
 import { dragReach } from "@/lib/dragReach";
 import { useMovablePanel, type MovablePanelOptions } from "@/lib/useMovablePanel";
 import { computeSectionPlaneVector, DEFAULT_SECTION_SETTINGS, getSectionBounds, SECTION_AXES_SHOWN, sectionAxisLetter, sectionAxisVector, sectionFineWindow, sectionFrameFromView, sectionFrameFromWorkplane, sectionPlacementWorkplane, sectionPointFromFrame, sectionPointToFrame, type SectionFrame, type SectionOrientation, type SectionPlaneAxis, type SectionPlaneSettings } from "@/lib/sectionView";
@@ -41,6 +42,7 @@ import { openSecondViewWindow, SecondViewWindow, useSecondViewSupported } from "
 import { starSettingsForSize } from "@/lib/starGeometry";
 import { carriedOntoFace } from "@/lib/carryOntoFace";
 import { keepsProportionsForUpdate, keepsProportionsOnAxis } from "@/lib/keepProportions";
+import type { GroupHoleChange } from "@/lib/groupHoles";
 import { useWheelField } from "@/lib/useWheelField";
 import { wheelBaseStep, wheelNextValue } from "@/lib/wheelValueStep";
 import { createLatestRunner, type LatestRunner } from "@/lib/latestRunner";
@@ -115,7 +117,7 @@ import { syncHistoryPickHighlight, syncPickHighlight } from "@/components/workpl
 import { orbitViewBy, panViewBy } from "@/lib/viewArrowKeys";
 import { useViewportKeyboardHooks } from "@/components/workplane/viewportKeyboard";
 import { useViewportDoubleClick } from "@/components/workplane/useViewportDoubleClick";
-import { aimPickRay, firstShapeHit, paintLassoInView, pickImagePoint, pickLayFlatFace, pickMateFace, pickPaintFace, pickFaceCentre, pickRotationPivot, pickShapeAt, pointerRayFor, shapesUnderPointer, rayPointOnRotationPlane, RENDER_LAYER_SHAPES, splitAxisParameter, usePickOnlyPointer, worldTrianglePositions, type LayFlatPick, type PickOnlySelection } from "@/components/workplane/viewportPicking";
+import { aimPickRay, firstShapeHit, moveSnapWalls, paintLassoInView, pickImagePoint, pickLayFlatFace, pickMateFace, pickPaintFace, pickFaceCentre, pickRotationPivot, pickShapeAt, pointerRayFor, shapesUnderPointer, rayPointOnRotationPlane, RENDER_LAYER_SHAPES, splitAxisParameter, usePickOnlyPointer, WALL_RAYS_ACROSS, WALL_RAYS_UP, wallRaySkip, wallSnapForSelection, worldTrianglePositions, type LayFlatPick, type PickOnlySelection } from "@/components/workplane/viewportPicking";
 import { fastEdgesGeometry } from "@/lib/fastEdgesGeometry";
 import { RENDER_LAYER_HELPERS, type PointCardOffset, type ThreeState, type MoveDimensionSession, type NoteOverlayState, type TapePoint, type TapeAttachment, type TapeEdgeAttachment, type TapeModel, type TapeOverlayState, type TapeCandidate, type DragItem, quaternionForShape, projectToScreen, syncMoveDimensionWorldLines, tapeShapeDimensions, tapePointWorld, tapeEdgeWorldPoints, tapeSegmentWorldPoints, tapeLengthMoverOf, tapeLengthRefusalText, syncTapeOverlay, tapeSegmentLengths, syncNoteOverlay, NoteOverlay, TapeOverlay, type RulerDimensionOverlayItem, type RulerDimensionOverlayState, syncRulerDimensionOverlay, RulerDimensionOverlay, type CornerRulerInstance, type CornerRulerOverlayState, syncCornerRulerToolOverlay, CornerRulerToolOverlay, syncOriginDimensionWorldLines, shapeCenter, shapeLocalExtents, projectShapeExtent, projectShapesExtent, type OriginDimensionFrame, formatMeasure, findShapeObject, releaseSharedShapeMaterials, disposeChildren, disposeObject } from "@/components/workplane/ViewportOverlays";
 import { MIN_SHAPE_SIZE, RENDER_LAYER_PREVIEWS, overhangUniforms, setEdgeLineStyle, setStrongHoles, setRulerInchScale, MODIFIER_EDGE_DEPTH_PULL, clamp, selectionFrameForShapes, refreshFrozenObjectMatrix, updateShapeObjectTransform, applySectionClipping, rebuildShapes, rebuildModifierEdges, setModifierEdgeHover, rebuildSelectionHelpers, cadFacePickLayerMesh, syncCadFaceLayer, syncBentTubeSegment, TRANSPARENT_SOLID_OPACITY, createShapeObject, onGroupDisplayReady } from "./workplane/viewportShapeObjects";
@@ -125,6 +127,8 @@ import { isTypingTarget } from "@/lib/editorKeyTargets";
 import { liftHandleOffset, screenAngle, framePoint, selectionFrameCorners, workplaneFootprintY, syncTransformOverlay, syncAlignOverlay, syncMirrorOverlay, syncLayFlatHover } from "./workplane/viewportTransformOverlays";
 import { ClearanceMarkOverlay, clearanceFocusBox, syncClearanceMarkOverlay, type ClearanceMark, type ClearanceMarkOverlayState } from "./workplane/ClearanceMarkOverlay";
 import { clipThinWallOverlay, syncThinWallOverlay, type PrintCheckView } from "./workplane/ThinWallOverlay";
+import { restoreLayerViewCamera, saveLayerViewCamera, syncLayerViewOverlay, type LayerView } from "./workplane/LayerViewOverlay";
+import { moldHandleDirection, pickMoldHandle, syncMoldPreviewOverlay, type MoldPreview } from "./workplane/MoldPreviewOverlay";
 import { EMPTY_PROTRACTOR, pickProtractorFace, protractorFaceFromWorld, protractorReading, protractorStraightView, ProtractorOverlay, syncProtractorOverlay, type ProtractorKind, type ProtractorModel, type ProtractorOverlayState } from "./workplane/viewportProtractor";
 import { tapeAttachmentFromWorld, TAPE_PERPENDICULAR_SNAP_PIXELS, pickModelTapeCandidate, tapeCentresNear, sameTapeCentres, distanceToScreenSegment, SectionMeasureModel, SectionMeasureOverlayState, syncSectionMeasureOverlay } from "./workplane/viewportTape";
 export type { LayFlatPick } from "@/components/workplane/viewportPicking";
@@ -220,6 +224,12 @@ type WorkplaneViewportProps = {
   clearanceMark?: ClearanceMark | null;
   /** The print check's thin walls, painted red on the bodies, and the place its Show brings the camera to. */
   printCheckView?: PrintCheckView | null;
+  /** The layer view of the layer check: the bodies cut at a layer, its cross-section and the places found painted. */
+  layerView?: LayerView | null;
+  /** The mold tool's preview: the parting face, the sprue, the vents and the air traps. */
+  moldPreview?: MoldPreview | null;
+  /** The knob of the free mold direction dragged: the new direction (scene frame, unit). */
+  onMoldDirectionDrag?: (direction: [number, number, number]) => void;
   onSetPlacementWorkplane: (workplane: PlacementWorkplane, source: "shape" | "base") => void;
   onToggleWorkplaneTool: () => void;
   onInteractionActiveChange?: (active: boolean) => void;
@@ -229,6 +239,7 @@ type WorkplaneViewportProps = {
   onOpenGroup?: (id: string) => void;
   /** A hull built again with its parts' holes kept open or filled (Discussion #1440). */
   onHullKeepHolesChange?: (id: string, keepHoles: boolean) => void;
+  onGroupHoleDiameters?: (id: string, change: GroupHoleChange) => void;
   canSeparateParts?: boolean;
   onSeparateParts?: () => void;
   /** Several parts selected (#183): solid or hole, a colour and locking for all of them. */
@@ -260,6 +271,9 @@ type WorkplaneViewportProps = {
   onVaseAccessories?: () => void;
   /** Lays the selected Swallowtail baseplate's keys out in front of it (#1061). */
   onGridfinityKeys?: () => void;
+  /** Splits the selected baseplate into plates that fit the printer (#1388). */
+  onGridfinitySplit?: () => void;
+  onBoltSplit?: (pins: boolean) => void;
   onLayerText?: (patch: TextLayerPatch) => void;
   onTextTags?: (names: string[], gap: number) => void;
   /** Several lines of text under one another, one text each (#1207). */
@@ -313,6 +327,10 @@ type WorkplaneViewportProps = {
   /** "Align faces" waiting for a click on a face of one of these bodies; `round` lights up whole round faces, `joined` the group's parts joined, whose face is lit in place of the part's. */
   mateFacePick?: { shapeIds: string[]; round?: boolean | "either"; joined?: ArrayLike<number> | null } | null;
   onMateFacePick?: (pick: LayFlatPick | null) => void;
+  /** Thread insert placement: a true world-space ring on the selected surface. */
+  threadInsertPreview?: { origin: {x:number;y:number;z:number}; normal: {x:number;y:number;z:number}; diameter:number; allowed:boolean } | null;
+  threadInsertCenter?: {point:{x:number;y:number;z:number};normal:{x:number;y:number;z:number}} | null;
+  onThreadInsertDragPick?: (pick: LayFlatPick | null) => void;
   /**
    * "Point to point" (Discussion #1491): while `picking`, a click takes a corner, a spot on an edge, the centre of a
    * round edge of one of these bodies, or a reference point; `marks` are the points already picked.
@@ -517,7 +535,7 @@ declare global {
       get: () => ViewportPerfStats;
     };
     layerlingCaptureCanvas?: () => string;
-    layerlingCaptureCanvasAsync?: () => Promise<string>;
+    layerlingCaptureCanvasAsync?: (onlyIds?: readonly string[]) => Promise<string>;
     layerlingCaptureView?: (face?: LayerlingMcpViewFace) => Promise<string> | string;
     layerlingCaptureImage?: (options?: { plate?: boolean; transparent?: boolean; scale?: number }) => string;
     /** The section view for MCP: applies what is given, returns the settings it ends on and the plane's range. */
@@ -569,6 +587,8 @@ type DragState = {
   /** World footprint of the dragged shapes at the start, when snapping to other shapes is on. */
   snapMoving?: SnapBox | null;
   snapTargets?: SnapBox[];
+  /** The walls the dragged shapes run into, found on the way (`moveSnapWalls`). */
+  wallSnap?: MoveWallSnap;
 };
 
 type MoveDimensionOverlayState = MoveDimensionOverlayData & {
@@ -1105,37 +1125,26 @@ function resizeSnapForHandle(
   const movingTo = frame.center[otherAxis] + crossSize / 2;
   const targets: EdgeSnapTarget[] = boxEdgeTargets(moveSnapTargets(shapes, moved, points, workplane), worldAxis);
   // Rays from the dragged side, a little inside it so a wall it already touches is met, spread over its face.
-  const skip = new Set([...moved, ...shapes.filter((entry) => entry.hidden).map((entry) => entry.id)]);
+  const skip = wallRaySkip(shapes, moved);
   const direction = new THREE.Vector3();
   direction[worldAxis] = worldDirection;
   const side = framePoint(frame, frameAxis === "x" ? (sign * size) / 2 : 0, 0, frameAxis === "z" ? (sign * size) / 2 : 0);
   const height = frame.max.y - frame.min.y;
   const middleY = (frame.max.y + frame.min.y) / 2;
-  const walls = new Map<string, EdgeSnapTarget>();
+  const hits: THREE.Vector3[] = [];
   state.raycaster.layers.set(RENDER_LAYER_SHAPES);
-  for (const across of [-0.4, -0.2, 0, 0.2, 0.4]) {
-    for (const up of [-0.4, 0, 0.4]) {
+  for (const across of WALL_RAYS_ACROSS) {
+    for (const up of WALL_RAYS_UP) {
       const origin = side.clone()
         .addScaledVector(crossVector, across * crossSize)
         .addScaledVector(frame.yAxis, middleY + up * height)
         .addScaledVector(direction, -0.01);
       state.raycaster.set(origin, direction);
       const hit = firstShapeHit(state, { needsFace: true, skip });
-      if (!hit) continue;
-      // To a hundredth: a mesh carries float rounding, and a hole cuts a thousandth wider than typed.
-      const value = Math.round(hit.point[worldAxis] * 100) / 100;
-      const key = value.toFixed(2);
-      const along = hit.point[otherAxis];
-      const wall = walls.get(key);
-      if (wall) {
-        wall.from = Math.min(wall.from, along);
-        wall.to = Math.max(wall.to, along);
-      } else {
-        walls.set(key, { value, from: along, to: along });
-      }
+      if (hit) hits.push(hit.point);
     }
   }
-  targets.push(...walls.values());
+  targets.push(...wallLines(hits, worldAxis));
   // The guide lies under the body, so it shows on the floor of a case too, not hidden in it on the workplane.
   const guideY = framePoint(frame, 0, frame.min.y, 0).y;
   return { frameAxis, worldAxis, worldDirection, targets, movingFrom, movingTo, guideY };
@@ -1625,6 +1634,9 @@ export function WorkplaneViewport({
   highlightIds,
   clearanceMark = null,
   printCheckView = null,
+  layerView = null,
+  moldPreview = null,
+  onMoldDirectionDrag,
   onSetPlacementWorkplane,
   onToggleWorkplaneTool,
   onInteractionActiveChange,
@@ -1632,6 +1644,7 @@ export function WorkplaneViewport({
   onEditSketch,
   onOpenGroup,
   onHullKeepHolesChange,
+  onGroupHoleDiameters,
   canSeparateParts = false,
   onSeparateParts,
   onSelectionHole,
@@ -1653,6 +1666,8 @@ export function WorkplaneViewport({
   onSurfaceRegionDraw,
   onVaseAccessories,
   onGridfinityKeys,
+  onGridfinitySplit,
+  onBoltSplit,
   onLayerText,
   onTextTags,
   onTextBlock,
@@ -1684,6 +1699,9 @@ export function WorkplaneViewport({
   onLayFlatPick,
   mateFacePick = null,
   onMateFacePick,
+  threadInsertPreview = null,
+  threadInsertCenter = null,
+  onThreadInsertDragPick,
   matePointPick = null,
   onMatePointPick,
   paintPick = null,
@@ -1912,6 +1930,77 @@ export function WorkplaneViewport({
     setSnapMenuAt({ x, y });
   }, !pickOnly);
   const threeRef = useRef<ThreeState | null>(null);
+  // Thread insert marker is a temporary helper, never a document shape.
+  useEffect(() => {
+    const state = threeRef.current;
+    if (!state || !threadInsertPreview || !Number.isFinite(threadInsertPreview.diameter) || threadInsertPreview.diameter <= 0) return;
+    const n = new THREE.Vector3(threadInsertPreview.normal.x,threadInsertPreview.normal.y,threadInsertPreview.normal.z).normalize();
+    const center = new THREE.Vector3(threadInsertPreview.origin.x,threadInsertPreview.origin.y,threadInsertPreview.origin.z).addScaledVector(n,0.025);
+    const u = new THREE.Vector3(0,1,0);
+    if (Math.abs(n.dot(u)) > 0.95) u.set(1,0,0);
+    u.addScaledVector(n,-u.dot(n)).normalize();
+    const w = new THREE.Vector3().crossVectors(n,u).normalize();
+    const radius = threadInsertPreview.diameter/2;
+    const color = threadInsertPreview.allowed ? 0x18d66b : 0xff3333;
+    // WebGL ignores LineBasicMaterial.linewidth on most Windows drivers.
+    // Instead use annulus meshes, with a thick white halo and colour ring.
+    const annulus=(thickness:number,ringColor:number,order:number)=>{
+      const half=Math.min(thickness/2,radius*.45);
+      const geometry=new THREE.RingGeometry(Math.max(.01,radius-half),radius+half,96);
+      const material=new THREE.MeshBasicMaterial({color:ringColor,side:THREE.DoubleSide,depthTest:false,depthWrite:false});
+      const mesh=new THREE.Mesh(geometry,material);
+      mesh.position.copy(center);
+      mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),n);
+      mesh.renderOrder=order;
+      return mesh;
+    };
+    const halo=annulus(0.62,0xffffff,9998);
+    const ring=annulus(0.34,color,9999);
+    const bars = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints([
+      center.clone().addScaledVector(u,-radius*.35),center.clone().addScaledVector(u,radius*.35),
+      center.clone().addScaledVector(w,-radius*.35),center.clone().addScaledVector(w,radius*.35)
+    ]),new THREE.LineBasicMaterial({color,depthTest:false,depthWrite:false}));
+    bars.renderOrder=10000;
+    state.scene.add(halo,ring,bars);
+    state.needsRender=true;
+    return () => {
+      state.scene.remove(halo,ring,bars);
+      halo.geometry.dispose();(halo.material as THREE.Material).dispose();
+      ring.geometry.dispose();(ring.material as THREE.Material).dispose();
+      bars.geometry.dispose();(bars.material as THREE.Material).dispose();
+      state.needsRender=true;
+    };
+  },[threadInsertPreview]);
+
+  // Purple face-center crosshair: a display-only helper, never included in STL.
+  useEffect(() => {
+    const state=threeRef.current;
+    if(!state || !threadInsertCenter) return;
+    const {point,normal}=threadInsertCenter;
+    const n=new THREE.Vector3(normal.x,normal.y,normal.z).normalize();
+    if(n.lengthSq()<0.5) return;
+    const pos=new THREE.Vector3(point.x,point.y,point.z).addScaledVector(n,0.06);
+    const across=new THREE.Vector3(0,1,0);
+    if(Math.abs(n.dot(across))>.95) across.set(1,0,0);
+    across.addScaledVector(n,-across.dot(n)).normalize();
+    const up=new THREE.Vector3().crossVectors(n,across).normalize();
+    const r=0.65;
+    const material=new THREE.LineBasicMaterial({color:0xaf55ff,depthTest:false,depthWrite:false});
+    const lines=new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints([
+      pos.clone().addScaledVector(across,-r),pos.clone().addScaledVector(across,r),
+      pos.clone().addScaledVector(up,-r),pos.clone().addScaledVector(up,r)
+    ]),material);
+    lines.renderOrder=10002;
+    const dot=new THREE.Mesh(new THREE.SphereGeometry(0.13,12,8),new THREE.MeshBasicMaterial({color:0xc18aff,depthTest:false,depthWrite:false}));
+    dot.position.copy(pos);dot.renderOrder=10003;
+    state.scene.add(lines,dot);state.needsRender=true;
+    return () => {
+      state.scene.remove(lines,dot);
+      lines.geometry.dispose();material.dispose();dot.geometry.dispose();(dot.material as THREE.Material).dispose();
+      state.needsRender=true;
+    };
+  },[threadInsertCenter]);
+
   // A 3D mouse the site may use steers this view (#1013).
   useSpaceMouse(threeRef);
   const shapesRef = useRef(shapes);
@@ -2218,6 +2307,12 @@ export function WorkplaneViewport({
   onSplitSurfacePickRef.current = onSplitSurfacePick;
   const [splitPickOverFace, setSplitPickOverFace] = useState(false);
   const splitDragRef = useRef<SplitPlaneDragState | null>(null);
+  // The knob of the free mold direction while it is dragged, and the newest preview and callback for the pointer handlers.
+  const moldDragRef = useRef<{ pointerId: number } | null>(null);
+  const moldPreviewRef = useRef(moldPreview);
+  moldPreviewRef.current = moldPreview;
+  const onMoldDirectionDragRef = useRef(onMoldDirectionDrag);
+  onMoldDirectionDragRef.current = onMoldDirectionDrag;
   const [splitHandleState, setSplitHandleState] = useState<"hover" | "drag" | null>(null);
   const perfRef = useRef({
     fps: 0,
@@ -3221,7 +3316,17 @@ export function WorkplaneViewport({
     // The preview of a design (the cards of the overview, the server copy) shows all its bodies, framed, from the side
     // the view looks from: not the screen as it stands, which is a close-up or a speck on the plate, depending on how far
     // in or out the work was done. The camera is put back at once; the screen is not shown in between.
-    window.layerlingCaptureCanvasAsync = () => {
+    // With ids (a .lyl of only the selected objects) the picture shows just those: the others are left out for it.
+    window.layerlingCaptureCanvasAsync = async (onlyIds?: readonly string[]) => {
+      const only = onlyIds?.length ? new Set(onlyIds) : null;
+      const leftOut: THREE.Object3D[] = [];
+      if (only) {
+        state.shapeRecords.forEach((record, id) => {
+          if (only.has(id) || !record.object.visible) return;
+          record.object.visible = false;
+          leftOut.push(record.object);
+        });
+      }
       const bounds = selectionBounds(state, [...state.shapeRecords.keys()].filter((id) => state.shapeRecords.get(id)?.object.visible));
       const saved = bounds
         ? { position: state.camera.position.clone(), target: state.controls.target.clone(), up: state.camera.up.clone(), zoom: state.camera.zoom, reach: state.focusReach, turn: state.cameraTurn }
@@ -3233,6 +3338,8 @@ export function WorkplaneViewport({
       state.camera.updateMatrixWorld();
       renderFrame(state);
       const picture = thumbnailPngDataUrl(state.renderer.domElement);
+      leftOut.forEach((object) => { object.visible = true; });
+      if (leftOut.length) state.needsRender = true;
       if (saved) {
         state.camera.position.copy(saved.position);
         state.controls.target.copy(saved.target);
@@ -4474,7 +4581,8 @@ export function WorkplaneViewport({
       if ((kind === "lift" || kind === "height" || kind === "slide") && !liftStartPoint) {
         return;
       }
-      // On the flat workplane an arrow snaps to the edges and middles of other bodies as a drag does.
+      // On the flat workplane an arrow snaps to the edges and middles of other bodies and the walls it runs
+      // into, as a drag does.
       const slideFlat = kind === "slide" && isWorldHorizontalWorkplane(activeWorkplane);
       const slideMoving = slideFlat && workspaceRef.current.objectSnap
         ? unionSnapBox(frame.ids.flatMap((id) => {
@@ -4486,6 +4594,7 @@ export function WorkplaneViewport({
         ? {
             moving: slideMoving,
             targets: moveSnapTargets(shapesRef.current, new Set(frame.ids), notesVisibleRef.current ? referencePoints(notesRef.current) : [], activeWorkplane),
+            walls: wallSnapForSelection(shapesRef.current, new Set(frame.ids)),
             guideY: activeWorkplane.origin.y,
           }
         : undefined;
@@ -4765,7 +4874,7 @@ export function WorkplaneViewport({
         if (transform.handleKey.startsWith("corner-radius")) {
           const start = transform.startShape;
           const index = transform.handleKey === "corner-radius" ? undefined : Number(transform.handleKey.slice("corner-radius-".length));
-          onUpdateShape(start.id, cornerRadiusDragPatch(start, snapValue(rawDelta, step), index));
+          onUpdateShape(start.id, start.kind === "polygon" ? polygonCornerDragPatch(start, snapValue(rawDelta, step)) : cornerRadiusDragPatch(start, snapValue(rawDelta, step), index));
           return true;
         }
         if (transform.handleKey === "slope-end") {
@@ -4865,20 +4974,18 @@ export function WorkplaneViewport({
         let delta = snapValue(rawDelta, step);
         const snap = transform.slideSnap;
         if (snap && state) {
-          // As in a drag, an edge or the middle that comes near one of another body is pulled onto it;
-          // Alt lets the selection go free. On the flat workplane the axis is X or minus Z of the scene.
+          // As in a drag, an edge or the middle that comes near one of another body is pulled onto it, and a side onto
+          // a wall; Alt lets the selection go free. On the flat workplane the axis is X or minus Z of the scene.
           const alongX = Math.abs(axis.x) >= Math.abs(axis.z);
           let guides: ObjectSnapGuide[] = [];
           if (!altKey) {
-            const pull = objectSnapOffset(
-              shiftSnapBox(snap.moving, axis.x * rawDelta, axis.z * rawDelta),
-              snap.targets,
-              objectSnapThreshold(state, currentPoint ?? transform.selectionFrame.center),
-            );
+            const moved = shiftSnapBox(snap.moving, axis.x * rawDelta, axis.z * rawDelta);
+            const walls = snap.walls ? moveSnapWalls(state, snap.walls, moved, [alongX ? "x" : "z"]) : undefined;
+            const pull = objectSnapOffset(moved, snap.targets, objectSnapThreshold(state, currentPoint ?? transform.selectionFrame.center), walls);
             const extra = alongX ? pull.dx : pull.dz;
             if (extra !== null) {
               delta = rawDelta + extra / (alongX ? axis.x : axis.z);
-              guides = objectSnapOffset(shiftSnapBox(snap.moving, axis.x * delta, axis.z * delta), snap.targets, 1e-4)
+              guides = objectSnapOffset(shiftSnapBox(snap.moving, axis.x * delta, axis.z * delta), snap.targets, 1e-4, walls)
                 .guides.filter((guide) => guide.axis === (alongX ? "x" : "z"));
             }
           }
@@ -5743,6 +5850,8 @@ export function WorkplaneViewport({
     const value = parseMeasurementInput(edit.value);
     if (Number.isFinite(value)) {
       const pivot = pivotVector(rotationPivotRef.current);
+      // One change for all bodies, as for a typed size (#259), or each update would start from the shapes as they were.
+      onInteractionActiveChange?.(true);
       selectedIdsRef.current.forEach((id) => {
         const shape = shapesRef.current.find((entry) => entry.id === id);
         const rotationPatch = rotationPatchForAxis(edit.axis, value);
@@ -5754,11 +5863,12 @@ export function WorkplaneViewport({
         const delta = quaternionForShape({ ...shape, ...rotationPatch }).multiply(startQuaternion.clone().invert());
         onUpdateShape(id, { ...rotatedGeometryShapePatch(shape, delta, pivot), bakeTransform: true });
       });
+      onInteractionActiveChange?.(false);
     }
     setEditingRotation(null);
     setEditingCorner(null);
     setActiveRotationWheel(false);
-  }, [editingRotation, onUpdateShape]);
+  }, [editingRotation, onInteractionActiveChange, onUpdateShape]);
 
   // The angle box too (#486): a press outside applies the typed value before the selection can go.
   useEffect(() => {
@@ -5829,6 +5939,14 @@ export function WorkplaneViewport({
   }, [printCheckThin]);
   useEffect(() => () => {
     if (threeRef.current) syncThinWallOverlay(threeRef.current, null);
+  }, []);
+  // The mold tool's preview while its panel is open.
+  useEffect(() => {
+    const state = threeRef.current;
+    if (state) syncMoldPreviewOverlay(state, moldPreview);
+  }, [moldPreview]);
+  useEffect(() => () => {
+    if (threeRef.current) syncMoldPreviewOverlay(threeRef.current, null);
   }, []);
   const printCheckRequest = printCheckView?.request ?? 0;
   const printCheckFocusRef = useRef<PrintCheckView["focus"]>(null);
@@ -6828,6 +6946,14 @@ export function WorkplaneViewport({
       if (event.button !== 0 || event.ctrlKey || event.metaKey) {
         return;
       }
+      if (moldPreviewRef.current?.handle && onMoldDirectionDragRef.current && pickMoldHandle(state, event.clientX, event.clientY)) {
+        event.preventDefault();
+        capturePointer(event.currentTarget, event.pointerId);
+        moldDragRef.current = { pointerId: event.pointerId };
+        state.controls.enabled = false;
+        onInteractionActiveChange?.(true);
+        return;
+      }
       if (splitActiveRef.current) {
         if (splitSurfacePickRef.current) {
           const surface = pickPlacementSurface(event.clientX, event.clientY, false);
@@ -7343,6 +7469,7 @@ export function WorkplaneViewport({
           notesVisibleRef.current ? referencePoints(notesRef.current) : [],
           activeWorkplane,
         );
+        dragRef.current.wallSnap = wallSnapForSelection(shapesRef.current, dragged);
       }
       if (moveDimensionsEnabledRef.current && usesWorldHorizontalAxes) {
         const dragFrame = selectionFrameForShapes(shapesRef.current, items.map((item) => item.id));
@@ -7401,6 +7528,9 @@ export function WorkplaneViewport({
   );
 
   const finishDragRef = useRef<((event: ReactPointerEvent<HTMLDivElement>) => void) | null>(null);
+  const threadInsertMoveRef = useRef(onThreadInsertDragPick);
+  threadInsertMoveRef.current = onThreadInsertDragPick;
+  const threadInsertLastMoveRef = useRef(0);
   const handlePointerMove = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
       // Gehoert die Flaeche gerade der Kamera, hat hier niemand etwas zu
@@ -7421,6 +7551,14 @@ export function WorkplaneViewport({
       carryPointerRef.current = { x: event.clientX, y: event.clientY };
       if (cruiseAssetRef.current) moveCruiseGhost(event.clientX, event.clientY);
       if (carryIdsRef.current) moveCarry(event.clientX, event.clientY);
+      const moldDrag = moldDragRef.current;
+      const moldHandle = moldPreviewRef.current?.handle;
+      if (moldDrag && moldHandle && threeRef.current) {
+        if (moldDrag.pointerId !== event.pointerId) return;
+        const direction = moldHandleDirection(threeRef.current, event.clientX, event.clientY, moldHandle);
+        if (direction) onMoldDirectionDragRef.current?.([direction.x, direction.y, direction.z]);
+        return;
+      }
       if (splitActiveRef.current) {
         const state = threeRef.current;
         if (!state) return;
@@ -7496,6 +7634,14 @@ export function WorkplaneViewport({
         return;
       }
       if (mateFacePickRef.current) {
+        // With left mouse button held, drag the temporary insert circle to a new location.
+        if ((event.buttons & 1) && threadInsertMoveRef.current && threeRef.current) {
+          const now = performance.now();
+          if (now-threadInsertLastMoveRef.current >= 90) {
+            threadInsertLastMoveRef.current=now;
+            threadInsertMoveRef.current(pickMateFace(threeRef.current,event.clientX,event.clientY));
+          }
+        }
         mateFaceHoverRef.current = { x: event.clientX, y: event.clientY };
         syncLayFlatHover(threeRef.current, mateFacePickRef.current.shapeIds, resolvedThemeRef.current, event.clientX, event.clientY, mateFacePickRef.current.round, mateFacePickRef.current.joined);
         return;
@@ -7604,11 +7750,14 @@ export function WorkplaneViewport({
           const hiddenAxis = edgeOn ? (Math.abs(view.z) >= Math.abs(view.x) ? "z" : "x") : null;
           const rawDeltaX = axisLock?.along === "z" ? 0 : raw.x - drag.startPoint.x;
           const rawDeltaZ = axisLock?.along === "x" ? 0 : raw.z - drag.startPoint.z;
-          const snap = objectSnapOffset(shiftSnapBox(drag.snapMoving, rawDeltaX, rawDeltaZ), drag.snapTargets, objectSnapThreshold(state, raw));
+          const rawBox = shiftSnapBox(drag.snapMoving, rawDeltaX, rawDeltaZ);
+          // Judged where the pointer is, so a wall's guide stays once the part is pulled along the other axis.
+          const walls = drag.wallSnap ? moveSnapWalls(state, drag.wallSnap, rawBox, (["x", "z"] as const).filter((axis) => axis !== hiddenAxis && (!axisLock || axisLock.along === axis))) : undefined;
+          const snap = objectSnapOffset(rawBox, drag.snapTargets, objectSnapThreshold(state, raw), walls);
           if (snap.dx !== null && axisLock?.along !== "z" && hiddenAxis !== "x") deltaX = rawDeltaX + snap.dx;
           if (snap.dz !== null && axisLock?.along !== "x" && hiddenAxis !== "z") deltaZ = rawDeltaZ + snap.dz;
           if (snap.dx !== null || snap.dz !== null) {
-            guides = objectSnapOffset(shiftSnapBox(drag.snapMoving, deltaX, deltaZ), drag.snapTargets, 1e-4).guides;
+            guides = objectSnapOffset(shiftSnapBox(drag.snapMoving, deltaX, deltaZ), drag.snapTargets, 1e-4, walls).guides;
           }
         }
         syncObjectSnapGuides(state, guides, drag.guideY + 0.06);
@@ -7867,6 +8016,15 @@ export function WorkplaneViewport({
         return;
       }
       const state = threeRef.current;
+      const moldDrag = moldDragRef.current;
+      if (moldDrag) {
+        if (moldDrag.pointerId !== event.pointerId) return;
+        if (event.currentTarget.hasPointerCapture(moldDrag.pointerId)) event.currentTarget.releasePointerCapture(moldDrag.pointerId);
+        moldDragRef.current = null;
+        if (state) state.controls.enabled = true;
+        onInteractionActiveChange?.(false);
+        return;
+      }
       const splitDrag = splitDragRef.current;
       if (splitDrag) {
         if (splitDrag.pointerId !== event.pointerId) return;
@@ -8268,6 +8426,33 @@ export function WorkplaneViewport({
   useEffect(() => {
     syncSectionClippingState(sectionSettings);
   }, [sectionSettings, syncSectionClippingState]);
+
+  // The layer view of the layer check: the section view's plane cuts the bodies at the layer's top while it is open, and
+  // the section view's own settings come back when it closes, as does the camera.
+  const layerViewOpen = Boolean(layerView);
+  const layerViewRef = useRef(layerView);
+  layerViewRef.current = layerView;
+  useEffect(() => {
+    const state = threeRef.current;
+    if (!state) return;
+    if (!layerView) return;
+    const plane = state.sectionPlane ?? new THREE.Plane();
+    plane.normal.set(0, -1, 0);
+    plane.constant = layerView.top + 1e-4;
+    applySectionClipping(state, plane);
+    syncLayerViewOverlay(state, layerView);
+  }, [layerView]);
+  useEffect(() => {
+    const state = threeRef.current;
+    if (!state || !layerViewOpen) return;
+    saveLayerViewCamera(state);
+    return () => {
+      syncLayerViewOverlay(state, null);
+      syncSectionClippingState(sectionSettingsRef.current);
+      restoreLayerViewCamera(state);
+      syncViewCube(state, viewCubeRef.current);
+    };
+  }, [layerViewOpen, syncSectionClippingState]);
 
   useEffect(() => {
     if (!sectionFineDraggingRef.current) setSectionFineAnchor(sectionSettings.offset);
@@ -9522,6 +9707,7 @@ export function WorkplaneViewport({
           onEditSketch={selectedShape.sketchProfile ? onEditSketch : undefined}
           onOpenGroup={selectedShape.groupedShapes?.length && onOpenGroup ? () => onOpenGroup(selectedShape.id) : undefined}
           onHullKeepHolesChange={selectedShape.groupOperation === "hull" && onHullKeepHolesChange ? (keepHoles) => onHullKeepHolesChange(selectedShape.id, keepHoles) : undefined}
+          onGroupHoleDiameters={selectedShape.groupedShapes?.length && onGroupHoleDiameters ? (change) => onGroupHoleDiameters(selectedShape.id, change) : undefined}
           canSeparateParts={canSeparateParts}
           onSeparateParts={onSeparateParts}
           onWrapAroundCylinder={onWrapAroundCylinder}
@@ -9538,6 +9724,8 @@ export function WorkplaneViewport({
           onSurfaceRegionDraw={onSurfaceRegionDraw}
           onVaseAccessories={onVaseAccessories}
           onGridfinityKeys={onGridfinityKeys}
+          onGridfinitySplit={onGridfinitySplit}
+          onBoltSplit={onBoltSplit}
           onLayerText={onLayerText}
           onTextTags={onTextTags}
           onTextBlock={onTextBlock}
